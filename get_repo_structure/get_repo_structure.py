@@ -8,85 +8,34 @@ from typing import List, Generator, Union
 
 import pandas as pd
 from tqdm import tqdm
-from tree_sitter import Language, Parser, Node
-import tree_sitter_cpp as tscpp
-import tree_sitter_go as tsgo
-import tree_sitter_java as tsjava
-import tree_sitter_typescript as tsts
-import tree_sitter_rust as tsrust
+from tree_sitter import Node
+from tree_sitter_language_pack import get_parser
 
 repo_to_top_folder = {
-    # Python
-    "django/django": "django",
-    "sphinx-doc/sphinx": "sphinx",
-    "scikit-learn/scikit-learn": "scikit-learn",
-    "sympy/sympy": "sympy",
-    "pytest-dev/pytest": "pytest",
-    "matplotlib/matplotlib": "matplotlib",
-    "astropy/astropy": "astropy",
-    "pydata/xarray": "xarray",
-    "mwaskom/seaborn": "seaborn",
-    "psf/requests": "requests",
-    "pylint-dev/pylint": "pylint",
-    "pallets/flask": "flask",
     # Java
-    "skylot/jadx": "jadx",
-    "apache/dubbo": "dubbo",
-    "apache/commons-lang": "commons-lang",
-    "reactivex/rxjava": "rxjava",
-    "googlecontainertools/jib": "jib",
-    "netflix/eureka": "eureka",
-    "apache/camel": "camel",
-    "mockito/mockito": "mockito",
-    "google/gson": "gson",
-    "fasterxml/jackson-core": "jackson-core",
-    "fasterxml/jackson-databind": "jackson-databind",
-    "fasterxml/jackson-dataformat-xml": "jackson-dataformat-xml",
-    "elastic/logstash": "logstash",
-    "alibaba/fastjson2": "fastjson2",
-    # Go
-    "etcd-io/etcd": "etcd",
-    "gin-gonic/gin": "gin",
-    "zeromicro/go-zero": "go-zero",
-    "grpc/grpc-go": "grpc-go",
-    "cli/cli": "cli",
-    "go-gorm/gorm": "gorm",
-    # Rust
-    "nushell/nushell": "nushell",
-    "serde-rs/serde": "serde",
-    "sharkdp/bat": "bat",
-    "sharkdp/fd": "fd",
-    "tokio-rs/tokio": "tokio",
-    "rayon-rs/rayon": "rayon",
-    "tokio-rs/bytes": "bytes",
-    "tokio-rs/tracing": "tracing",
-    "BurntSushi/ripgrep": "ripgrep",
-    "clap-rs/clap": "clap",
-    # Typescript
-    "darkreader/darkreader": "darkreader",
-    "vuejs/vue": "vue",
-    "vuejs/core": "core",
-    "mui/material-ui": "material-ui",
-    # Javascript
-    "anuraghazra/github-readme-stats": "github-readme-stats",
-    "Kong/insomnia": "insomnia",
-    "axios/axios": "axios",
-    "sveltejs/svelte": "svelte",
-    "expressjs/express": "express",
-    "preactjs/preact": "preact",
-    "iamkun/dayjs": "dayjs",
-    # Cpp
-    "fmtlib/fmt": "fmt",
-    "nlohmann/json": "json",
-    "catchorg/Catch2": "Catch2",
-    "simdjson/simdjson": "simdjson",
-    "yhirose/cpp-httplib": "cpp-httplib",
-    # C
-    "jqlang/jq": "jq",
-    "redis/redis": "redis",
-    "facebook/zstd": "zstd",
-    "valkey-io/valkey": "valkey",
-    "ponylang/ponyc": "ponyc",
+    "antennapod/antennapod": "antennapod",
+
+    # Kotlin
+    "element-hq/element-x-android": "element-x-android",
+    "jackeblan/geto": "geto",
+    "lemmynet/jerboa": "jerboa",
+    "mjaakko/neostumbler": "neostumbler",
+    "openhab/openhab-android": "openhab-android",
+    "streetcomplete/streetcomplete": "streetcomplete",
+    "thunderbird/thunderbird-android": "thunderbird-android",
+    "tuskyapp/tusky": "tusky",
+    "paulwoitaschek/voice": "voice",
+    "commons-app/apps-android-commons": "apps-android-commons",
+    "wordpress-mobile/wordpress-android": "wordpress-android",
+    
+    # Dart/Flutter
+    "palisadoesfoundation/talawa": "talawa",
+    "zulip/zulip-flutter": "zulip-flutter",
+
+    # TypeScript
+    "expensify/app": "expensify",
+    "metamask/metamask-mobile": "metamask-mobile",
+    "rocketchat/rocket.chat.reactnative": "rocket.chat.reactnative",
 }
 
 
@@ -109,11 +58,12 @@ def checkout_commit(repo_path, commit_id):
 
 def clone_repo(repo_name, repo_playground):
     try:
-
+        # Normalize repo name to lowercase for lookup
+        repo_key = repo_name.lower()
         print(
-            f"Cloning repository from https://github.com/{repo_name}.git to {repo_playground}/{repo_to_top_folder[repo_name]}..."
+            f"Cloning repository from https://github.com/{repo_name}.git to {repo_playground}/{repo_to_top_folder[repo_key]}..."
         )
-        dir_name = repo_to_top_folder[repo_name]
+        dir_name = repo_to_top_folder[repo_key]
         subprocess.run(
             [
                 'cp',
@@ -143,12 +93,14 @@ def get_project_structure_from_scratch(
     # create playground
     os.makedirs(repo_playground)
 
+    # Normalize repo name to lowercase for lookup
+    repo_key = repo_name.lower()
     clone_repo(repo_name, repo_playground)
-    checkout_commit(f"{repo_playground}/{repo_to_top_folder[repo_name]}", commit_id)
-    structure = create_structure(f"{repo_playground}/{repo_to_top_folder[repo_name]}")
+    checkout_commit(f"{repo_playground}/{repo_to_top_folder[repo_key]}", commit_id)
+    structure = create_structure(f"{repo_playground}/{repo_to_top_folder[repo_key]}")
     # clean up
     subprocess.run(
-        ["rm", "-rf", f"{repo_playground}/{repo_to_top_folder[repo_name]}"], check=True
+        ["rm", "-rf", f"{repo_playground}/{repo_to_top_folder[repo_key]}"], check=True
     )
     d = {
         "repo": repo_name,
@@ -268,7 +220,7 @@ def parse_java_file(file_path, file_content=None):
     :param file_path: Path to the Java file.
     :return: Class names, and file contents
     """
-    parser = Parser(Language(tsjava.language()))
+    parser = get_parser('java')
 
     if file_content is None:
         try:
@@ -321,10 +273,10 @@ def parse_java_file(file_path, file_content=None):
 
 def parse_go_file(file_path, file_content=None):
     """Parse a Go file to extract class and function definitions with their line numbers.
-    :param file_path: Path to the Python file.
+    :param file_path: Path to the Go file.
     :return: Class names, function names, and file contents
     """
-    parser = Parser(Language(tsgo.language()))
+    parser = get_parser('go')
 
     if file_content is None:
         try:
@@ -378,10 +330,10 @@ def parse_go_file(file_path, file_content=None):
 
 def parse_rust_file(file_path, file_content=None):
     """Parse a Rust file to extract class and function definitions with their line numbers.
-    :param file_path: Path to the Python file.
+    :param file_path: Path to the Rust file.
     :return: Class names, function names, and file contents
     """
-    parser = Parser(Language(tsrust.language()))
+    parser = get_parser('rust')
 
     if file_content is None:
         try:
@@ -445,11 +397,11 @@ def parse_rust_file(file_path, file_content=None):
 
 
 def parse_cpp_file(file_path, file_content=None):
-    """Parse a Cpp file to extract class and function definitions with their line numbers.
-    :param file_path: Path to the Python file.
+    """Parse a C/C++ file to extract class and function definitions with their line numbers.
+    :param file_path: Path to the C/C++ file.
     :return: Class names, function names, and file contents
     """
-    parser = Parser(Language(tscpp.language()))
+    parser = get_parser('cpp')
 
     if file_content is None:
         try:
@@ -527,11 +479,11 @@ def parse_cpp_file(file_path, file_content=None):
 
 
 def parse_typescript_file(file_path, file_content=None):
-    """Parse a Typescript file to extract interface definitions and class definitions with their line numbers.
-    :param file_path: Path to the Java file.
+    """Parse a TypeScript file to extract interface definitions and class definitions with their line numbers.
+    :param file_path: Path to the TypeScript file.
     :return: Class names, function names, and file contents
     """
-    parser = Parser(Language(tsts.language_typescript()))
+    parser = get_parser('typescript')
 
     if file_content is None:
         try:
@@ -585,6 +537,164 @@ def parse_typescript_file(file_path, file_content=None):
                 'text': node.text.decode('utf-8').splitlines(),
             })
             arrow_function_idx = arrow_function_idx + 1
+
+    return class_info, function_names, file_content.splitlines()
+
+
+def parse_kotlin_file(file_path, file_content=None):
+    """Parse a Kotlin file to extract class and function definitions with their line numbers.
+    :param file_path: Path to the Kotlin file.
+    :return: Class names, function names, and file contents
+    """
+    parser = get_parser('kotlin')
+
+    if file_content is None:
+        try:
+            with open(file_path, "r") as file:
+                file_content = file.read()
+                tree = parser.parse(bytes(file_content, "utf-8"))
+        except Exception as e:
+            print(f"Error in file {file_path}: {e}")
+            return [], [], ""
+    else:
+        try:
+            tree = parser.parse(bytes(file_content, "utf-8"))
+        except Exception as e:
+            print(f"Error in file {file_path}: {e}")
+            return [], [], ""
+
+    class_info = []
+    function_names = []
+
+    for node in traverse(tree.root_node):
+        if node.type == 'class_declaration':
+            name_node = None
+            for child in node.children:
+                if child.type == 'type_identifier':
+                    name_node = child
+                    break
+            if name_node is None:
+                continue
+            
+            methods = []
+            for child in traverse(node):
+                if child.type == 'function_declaration':
+                    func_name_node = None
+                    for c in child.children:
+                        if c.type == 'simple_identifier':
+                            func_name_node = c
+                            break
+                    if func_name_node:
+                        methods.append({
+                            'name': func_name_node.text.decode('utf-8'),
+                            'start_line': child.start_point.row,
+                            'end_line': child.end_point.row,
+                            'text': child.text.decode('utf-8').splitlines(),
+                        })
+            
+            class_info.append({
+                'name': name_node.text.decode('utf-8'),
+                'start_line': node.start_point.row,
+                'end_line': node.end_point.row,
+                'text': node.text.decode('utf-8').splitlines(),
+                'methods': methods,
+            })
+        elif node.type == 'function_declaration':
+            # Check if this is a top-level function (not inside a class)
+            in_class = False
+            tmp = node.parent
+            while tmp is not None:
+                if tmp.type == 'class_declaration':
+                    in_class = True
+                    break
+                tmp = tmp.parent
+            
+            if not in_class:
+                func_name_node = None
+                for child in node.children:
+                    if child.type == 'simple_identifier':
+                        func_name_node = child
+                        break
+                if func_name_node:
+                    function_names.append({
+                        'name': func_name_node.text.decode('utf-8'),
+                        'start_line': node.start_point.row,
+                        'end_line': node.end_point.row,
+                        'text': node.text.decode('utf-8').splitlines(),
+                    })
+
+    return class_info, function_names, file_content.splitlines()
+
+
+def parse_dart_file(file_path, file_content=None):
+    """Parse a Dart file to extract class and function definitions with their line numbers.
+    :param file_path: Path to the Dart file.
+    :return: Class names, function names, and file contents
+    """
+    parser = get_parser('dart')
+
+    if file_content is None:
+        try:
+            with open(file_path, "r") as file:
+                file_content = file.read()
+                tree = parser.parse(bytes(file_content, "utf-8"))
+        except Exception as e:
+            print(f"Error in file {file_path}: {e}")
+            return [], [], ""
+    else:
+        try:
+            tree = parser.parse(bytes(file_content, "utf-8"))
+        except Exception as e:
+            print(f"Error in file {file_path}: {e}")
+            return [], [], ""
+
+    class_info = []
+    function_names = []
+
+    for node in traverse(tree.root_node):
+        if node.type == 'class_definition':
+            name_node = node.child_by_field_name('name')
+            if name_node is None:
+                continue
+            
+            methods = []
+            for child in traverse(node):
+                if child.type == 'method_signature' or child.type == 'function_signature':
+                    method_name = child.child_by_field_name('name')
+                    if method_name:
+                        methods.append({
+                            'name': method_name.text.decode('utf-8'),
+                            'start_line': child.start_point.row,
+                            'end_line': child.end_point.row,
+                            'text': child.text.decode('utf-8').splitlines(),
+                        })
+            
+            class_info.append({
+                'name': name_node.text.decode('utf-8'),
+                'start_line': node.start_point.row,
+                'end_line': node.end_point.row,
+                'text': node.text.decode('utf-8').splitlines(),
+                'methods': methods,
+            })
+        elif node.type == 'function_signature' or node.type == 'function_definition':
+            # Check if this is a top-level function
+            in_class = False
+            tmp = node.parent
+            while tmp is not None:
+                if tmp.type == 'class_definition':
+                    in_class = True
+                    break
+                tmp = tmp.parent
+            
+            if not in_class:
+                func_name = node.child_by_field_name('name')
+                if func_name:
+                    function_names.append({
+                        'name': func_name.text.decode('utf-8'),
+                        'start_line': node.start_point.row,
+                        'end_line': node.end_point.row,
+                        'text': node.text.decode('utf-8').splitlines(),
+                    })
 
     return class_info, function_names, file_content.splitlines()
 
@@ -662,6 +772,22 @@ def create_structure(directory_path):
             elif check_file_ext(file_name, 'typescript'):
                 file_path = os.path.join(root, file_name)
                 class_info, function_names, file_lines = parse_typescript_file(file_path)
+                curr_struct[file_name] = {
+                    "classes": class_info,
+                    "functions": function_names,
+                    "text": file_lines,
+                }
+            elif file_name.endswith('.kt') or file_name.endswith('.kts'):
+                file_path = os.path.join(root, file_name)
+                class_info, function_names, file_lines = parse_kotlin_file(file_path)
+                curr_struct[file_name] = {
+                    "classes": class_info,
+                    "functions": function_names,
+                    "text": file_lines,
+                }
+            elif file_name.endswith('.dart'):
+                file_path = os.path.join(root, file_name)
+                class_info, function_names, file_lines = parse_dart_file(file_path)
                 curr_struct[file_name] = {
                     "classes": class_info,
                     "functions": function_names,
