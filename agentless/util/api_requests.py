@@ -30,10 +30,14 @@ def create_chatgpt_config(
     model: str = "gpt-3.5-turbo",
 ) -> Dict:
     model = os.environ.get('OPENAI_MODEL')
+
+    # GPT-5.x models use max_completion_tokens instead of max_tokens
+    token_param = "max_completion_tokens" if model and "gpt-5" in model else "max_tokens"
+
     if isinstance(message, list):
         config = {
             "model": model,
-            "max_tokens": max_tokens,
+            token_param: max_tokens,
             "temperature": temperature,
             "n": batch_size,
             "messages": [{"role": "system", "content": system_message}] + message,
@@ -41,7 +45,7 @@ def create_chatgpt_config(
     else:
         config = {
             "model": model,
-            "max_tokens": max_tokens,
+            token_param: max_tokens,
             "temperature": temperature,
             "n": batch_size,
             "messages": [
@@ -49,6 +53,12 @@ def create_chatgpt_config(
                 {"role": "user", "content": message},
             ],
         }
+
+    # For GPT-5.x models, set reasoning_effort to "none" to disable reasoning mode
+    # This makes the model behave like GPT-4o for structured output tasks
+    if model and "gpt-5" in model:
+        config["reasoning_effort"] = "low"
+
     return config
 
 

@@ -27,6 +27,7 @@ repo_to_top_folder = {
     "paulwoitaschek/voice": "voice",
     "commons-app/apps-android-commons": "apps-android-commons",
     "wordpress-mobile/wordpress-android": "wordpress-android",
+    "futsch1/medtimer": "medtimer",
     
     # Dart/Flutter
     "palisadoesfoundation/talawa": "talawa",
@@ -212,7 +213,10 @@ def get_child_chain(node: Node, type_names: List[str]) -> Union[str, None]:
 
 
 def get_name(node: Node, type_name: str = 'identifier') -> Union[str, None]:
-    return get_child(node, type_name).text.decode('utf-8')
+    child = get_child(node, type_name)
+    if child is None:
+        return None
+    return child.text.decode('utf-8')
 
 
 def parse_java_file(file_path, file_content=None):
@@ -224,7 +228,7 @@ def parse_java_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:  # Catch all types of exceptions
@@ -247,12 +251,19 @@ def parse_java_file(file_path, file_content=None):
             elif node.type == "class_declaration":
                 info = class_info
 
+            node_name = get_name(node)
+            if node_name is None:
+                continue
+
             methods = []
             for n in traverse(node):
                 if n.type == "method_declaration":
+                    method_name = get_name(n)
+                    if method_name is None:
+                        continue
                     methods.append(
                         {
-                            "name": get_name(n),
+                            "name": method_name,
                             "start_line": n.start_point.row,
                             "end_line": n.end_point.row,
                             "text": n.text.decode('utf-8').splitlines(),
@@ -260,7 +271,7 @@ def parse_java_file(file_path, file_content=None):
                     )
             info.append(
                 {
-                    "name": get_name(node),
+                    "name": node_name,
                     "start_line": node.start_point.row,
                     "end_line": node.end_point.row,
                     "text": node.text.decode('utf-8').splitlines(),
@@ -280,7 +291,7 @@ def parse_go_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:  # Catch all types of exceptions
@@ -302,6 +313,8 @@ def parse_go_file(file_path, file_content=None):
             if type_spec is None:
                 continue
             name = get_name(type_spec, 'type_identifier')
+            if name is None:
+                continue
             methods = []
             class_info.append({
                 'name': name,
@@ -311,15 +324,21 @@ def parse_go_file(file_path, file_content=None):
                 'methods': methods,
             })
         elif node.type == 'method_declaration':
+            method_name = get_name(node, 'field_identifier')
+            if method_name is None:
+                continue
             function_names.append({
-                'name': get_name(node, 'field_identifier'),
+                'name': method_name,
                 'start_line': node.start_point.row,
                 'end_line': node.end_point.row,
                 'text': node.text.decode('utf-8').splitlines(),
             })
         elif node.type == 'function_declaration':
+            func_name = get_name(node, 'identifier')
+            if func_name is None:
+                continue
             function_names.append({
-                'name': get_name(node, 'identifier'),
+                'name': func_name,
                 'start_line': node.start_point.row,
                 'end_line': node.end_point.row,
                 'text': node.text.decode('utf-8').splitlines(),
@@ -337,7 +356,7 @@ def parse_rust_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:  # Catch all types of exceptions
@@ -355,15 +374,22 @@ def parse_rust_file(file_path, file_content=None):
     class_to_methods = {}
 
     def get_type(node: Node):
+        if node is None:
+            return None
         if node.type == 'type_identifier':
             return node.text.decode('utf-8')
         elif node.type == 'generic_type':
-            return get_type(node.child_by_field_name('type'))
+            type_node = node.child_by_field_name('type')
+            if type_node is None:
+                return None
+            return get_type(type_node)
         return None
 
     for node in traverse(tree.root_node):
         if node.type == 'struct_item' or node.type == 'enum_item':
             name = get_name(node, 'type_identifier')
+            if name is None:
+                continue
             methods = []
             class_to_methods[name] = methods
             class_info.append({
@@ -379,15 +405,21 @@ def parse_rust_file(file_path, file_content=None):
             if methods is not None:
                 for child in traverse(node):
                     if child.type == 'function_item':
+                        func_name = get_name(child)
+                        if func_name is None:
+                            continue
                         methods.append({
-                            'name': get_name(child),
+                            'name': func_name,
                             'start_line': child.start_point.row,
                             'end_line': child.end_point.row,
                             'text': child.text.decode('utf-8').splitlines(),
                         })
         elif node.type == 'function_item':
+            func_name = get_name(node)
+            if func_name is None:
+                continue
             function_names.append({
-                'name': get_name(node),
+                'name': func_name,
                 'start_line': node.start_point.row,
                 'end_line': node.end_point.row,
                 'text': node.text.decode('utf-8').splitlines(),
@@ -405,7 +437,7 @@ def parse_cpp_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:  # Catch all types of exceptions
@@ -422,10 +454,15 @@ def parse_cpp_file(file_path, file_content=None):
     function_names = []
 
     def get_type(node: Node):
+        if node is None:
+            return None
         if node.type == 'type_identifier':
             return node.text.decode('utf-8')
         elif node.type == 'template_type':
-            return get_type(node.child_by_field_name('name'))
+            name_node = node.child_by_field_name('name')
+            if name_node is None:
+                return None
+            return get_type(name_node)
         return None
 
     for node in traverse(tree.root_node):
@@ -433,8 +470,11 @@ def parse_cpp_file(file_path, file_content=None):
             methods = []
             if file_path.endswith('.c'):
                 continue
+            class_name = get_type(node.child_by_field_name('name'))
+            if class_name is None:
+                continue
             class_info.append({
-                'name': get_type(node.child_by_field_name('name')),
+                'name': class_name,
                 'start_line': node.start_point.row,
                 'end_line': node.end_point.row,
                 'text': node.text.decode('utf-8').splitlines(),
@@ -443,6 +483,8 @@ def parse_cpp_file(file_path, file_content=None):
             for child in traverse(node):
                 if child.type == 'function_definition':
                     name_node = child.child_by_field_name('declarator')
+                    if name_node is None:
+                        continue
                     name_node = name_node.child_by_field_name('declarator')
                     if name_node is None:
                         continue
@@ -454,6 +496,8 @@ def parse_cpp_file(file_path, file_content=None):
                     })
         elif node.type == 'function_definition':
             name_node = node.child_by_field_name('declarator')
+            if name_node is None:
+                continue
             name_node = name_node.child_by_field_name('declarator')
             if name_node is None:
                 continue
@@ -487,7 +531,7 @@ def parse_typescript_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:  # Catch all types of exceptions
@@ -506,9 +550,12 @@ def parse_typescript_file(file_path, file_content=None):
 
     for node in traverse(tree.root_node):
         if node.type == 'class_declaration':
+            name_node = node.child_by_field_name('name')
+            if name_node is None:
+                continue
             methods = []
             class_info.append({
-                'name': node.child_by_field_name('name').text.decode('utf-8'),
+                'name': name_node.text.decode('utf-8'),
                 'start_line': node.start_point.row,
                 'end_line': node.end_point.row,
                 'text': node.text.decode('utf-8').splitlines(),
@@ -516,15 +563,21 @@ def parse_typescript_file(file_path, file_content=None):
             })
             for child in traverse(node):
                 if child.type == 'method_definition':
+                    method_name = child.child_by_field_name('name')
+                    if method_name is None:
+                        continue
                     methods.append({
-                        'name': child.child_by_field_name('name').text.decode('utf-8'),
+                        'name': method_name.text.decode('utf-8'),
                         'start_line': child.start_point.row,
                         'end_line': child.end_point.row,
                         'text': child.text.decode('utf-8').splitlines(),
                     })
         elif node.type == 'function_declaration':
+            func_name = node.child_by_field_name('name')
+            if func_name is None:
+                continue
             function_names.append({
-                'name': node.child_by_field_name('name').text.decode('utf-8'),
+                'name': func_name.text.decode('utf-8'),
                 'start_line': node.start_point.row,
                 'end_line': node.end_point.row,
                 'text': node.text.decode('utf-8').splitlines(),
@@ -550,7 +603,7 @@ def parse_kotlin_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:
@@ -635,7 +688,7 @@ def parse_dart_file(file_path, file_content=None):
 
     if file_content is None:
         try:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
                 file_content = file.read()
                 tree = parser.parse(bytes(file_content, "utf-8"))
         except Exception as e:

@@ -22,7 +22,50 @@ from agentless.util.preprocess_data import (
     clean_method_left_space,
     get_full_file_paths_and_classes_and_functions,
 )
-from get_repo_structure.get_repo_structure import parse_python_file
+# MOBILE_DEV:
+from get_repo_structure.get_repo_structure import (
+    parse_python_file,
+    parse_java_file,
+    parse_go_file,
+    parse_rust_file,
+    parse_cpp_file,
+    parse_typescript_file,
+    parse_kotlin_file,
+    parse_dart_file,
+)
+
+
+def parse_file_by_extension(file_name: str, content: str):
+    """
+    Parse a file using the appropriate parser based on file extension.
+    Returns (class_info, function_names, file_lines).
+    """
+    file_lower = file_name.lower()
+    
+    try:
+        if file_lower.endswith('.py'):
+            return parse_python_file(None, content)
+        elif file_lower.endswith('.java'):
+            class_info, file_lines = parse_java_file(None, content)
+            return class_info, [], file_lines
+        elif file_lower.endswith('.go'):
+            return parse_go_file(None, content)
+        elif file_lower.endswith('.rs'):
+            return parse_rust_file(None, content)
+        elif file_lower.endswith(('.kt', '.kts')):
+            return parse_kotlin_file(None, content)
+        elif file_lower.endswith('.dart'):
+            return parse_dart_file(None, content)
+        elif file_lower.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            return parse_typescript_file(None, content)
+        elif file_lower.endswith(('.cpp', '.cc', '.cxx', '.c', '.h', '.hpp', '.hxx')):
+            return parse_cpp_file(None, content)
+        else:
+            # For unsupported files (xml, gradle, yaml, etc.), return empty structure
+            return [], [], content.split('\n')
+    except Exception:
+        # If parsing fails, return empty structure
+        return [], [], content.split('\n')
 
 
 def construct_file_meta_data(file_name: str, clazzes: list, functions: list) -> dict:
@@ -31,10 +74,45 @@ def construct_file_meta_data(file_name: str, clazzes: list, functions: list) -> 
     }
     meta_data["File Name"] = file_name
 
+    # MOBILE_DEV: Check if this is a TypeScript/JavaScript file
+    is_typescript = file_name.lower().endswith(('.ts', '.tsx', '.js', '.jsx'))
+
+    # MOBILE_DEV: Limit classes to avoid overly long metadata (TypeScript only)
+    MAX_CLASSES = 30
     if clazzes:
-        meta_data["Classes"] = ", ".join([c["name"] for c in clazzes])
+        class_names = [c["name"] for c in clazzes]
+        if is_typescript and len(class_names) > MAX_CLASSES:
+            meta_data["Classes"] = ", ".join(class_names[:MAX_CLASSES]) + f" ... and {len(class_names) - MAX_CLASSES} more"
+        else:
+            meta_data["Classes"] = ", ".join(class_names)
+
+    # MOBILE_DEV: Limit functions to avoid overly long metadata (TypeScript only)
+    # Prioritize named functions over arrow_function_N
+    MAX_FUNCTIONS = 30
     if functions:
-        meta_data["Functions"] = ", ".join([f["name"] for f in functions])
+        func_names = [f["name"] for f in functions]
+
+        if is_typescript:
+            # Separate named functions from arrow functions
+            named_funcs = [name for name in func_names if not name.startswith("arrow_function_")]
+            arrow_funcs = [name for name in func_names if name.startswith("arrow_function_")]
+
+            # Include named functions first, then arrow functions
+            if len(named_funcs) >= MAX_FUNCTIONS:
+                # Too many named functions, only include first MAX_FUNCTIONS
+                selected_funcs = named_funcs[:MAX_FUNCTIONS]
+                meta_data["Functions"] = ", ".join(selected_funcs) + f" ... and {len(func_names) - len(selected_funcs)} more"
+            else:
+                # Include all named functions + some arrow functions
+                remaining_slots = MAX_FUNCTIONS - len(named_funcs)
+                selected_funcs = named_funcs + arrow_funcs[:remaining_slots]
+                if len(selected_funcs) < len(func_names):
+                    meta_data["Functions"] = ", ".join(selected_funcs) + f" ... and {len(func_names) - len(selected_funcs)} more"
+                else:
+                    meta_data["Functions"] = ", ".join(selected_funcs)
+        else:
+            # For non-TypeScript files, include all functions
+            meta_data["Functions"] = ", ".join(func_names)
 
     return meta_data
 
@@ -233,8 +311,8 @@ class EmbeddingIndex(ABC):
                 if file_name not in filtered_files:
                     continue
 
-                # create documents
-                class_info, function_names, _ = parse_python_file(None, content)
+                # MOBILE_DEV:create documents using language-appropriate parser
+                class_info, function_names, _ = parse_file_by_extension(file_name, content)
                 if self.index_type == "simple":
                     docs = build_file_documents_simple(
                         class_info, function_names, file_name, content
@@ -258,7 +336,10 @@ class EmbeddingIndex(ABC):
                 Settings.callback_manager = CallbackManager([token_counter])
             else:
                 api_base = os.environ.get('OPENAI_EMBED_URL')
-                embed_model = OpenAIEmbedding(model_name="text-embedding-3-large", api_base=api_base)
+                # MOBILE_DEV:
+                embed_model_name = os.environ.get('OPENAI_EMBED_MODEL', 'openai/text-embedding-3-large')
+                embed_api_key = os.environ.get('OPENAI_EMBED_API_KEY')
+                embed_model = OpenAIEmbedding(model_name=embed_model_name, api_base=api_base, api_key=embed_api_key)
             index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
             #index.storage_context.persist(persist_dir=persist_dir)
         else:
@@ -267,8 +348,21 @@ class EmbeddingIndex(ABC):
 
         self.logger.info(f"Retrieving with query:\n{self.problem_statement}")
 
+        # MOBILE_DEV:Truncate problem statement to fit within embedding model's context length
+        # text-embedding-3-large has max 8192 tokens, leave some margin
+        max_tokens = 6000
+        encoding = tiktoken.encoding_for_model("text-embedding-3-large")
+        tokens = encoding.encode(self.problem_statement)
+        if len(tokens) > max_tokens:
+            truncated_tokens = tokens[:max_tokens]
+            truncated_text = encoding.decode(truncated_tokens)
+            self.logger.info(f"Truncated problem statement from {len(tokens)} to {max_tokens} tokens")
+            query_text = truncated_text
+        else:
+            query_text = self.problem_statement
+
         retriever = VectorIndexRetriever(index=index, similarity_top_k=100)
-        documents = retriever.retrieve(self.problem_statement)
+        documents = retriever.retrieve(query_text)
 
         self.logger.info(
             f"Embedding Tokens: {token_counter.total_embedding_token_count}"

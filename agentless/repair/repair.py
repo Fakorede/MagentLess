@@ -769,7 +769,7 @@ def main():
         "--backend",
         type=str,
         default="openai",
-        choices=["openai", "deepseek", "anthropic"],
+        choices=["openai", "deepseek", "anthropic", "openrouter"],
     )
     parser.add_argument("--output_folder", type=str, required=True)
     parser.add_argument("--post_process", action="store_true")

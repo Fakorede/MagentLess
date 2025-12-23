@@ -108,3 +108,27 @@ import {
 >>>>>>> REPLACE
 ```
 '''
+
+DIFF_KOTLIN = '''
+```kotlin
+### src/main/kotlin/Main.kt
+<<<<<<< SEARCH
+import java.util.Scanner
+=======
+import java.util.Scanner
+import java.math.BigInteger
+>>>>>>> REPLACE
+```
+'''
+
+DIFF_DART = '''
+```dart
+### lib/main.dart
+<<<<<<< SEARCH
+import 'package:flutter/material.dart';
+=======
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+>>>>>>> REPLACE
+```
+'''

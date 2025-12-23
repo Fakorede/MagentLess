@@ -5,6 +5,7 @@ python agentless/fl/retrieve.py \
     --filter_file results/$FOLDER_NAME/file_level_irrelevant/loc_outputs.jsonl \
     --output_folder results/$FOLDER_NAME/retrievel_embedding \
     --persist_dir embedding/swe-bench_simple \
+    --chunk_size 2048 \
     --num_threads $NJ \
     --dataset $DATASET \
     --split $SPLIT \
