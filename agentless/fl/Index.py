@@ -343,6 +343,11 @@ class EmbeddingIndex(ABC):
             index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
             index.storage_context.persist(persist_dir=persist_dir)
         else:
+            # mock=True always takes the if-branch above, so here mock is always False
+            api_base = os.environ.get('OPENAI_EMBED_URL')
+            embed_model_name = os.environ.get('OPENAI_EMBED_MODEL', 'openai/text-embedding-3-large')
+            embed_api_key = os.environ.get('OPENAI_EMBED_API_KEY')
+            Settings.embed_model = OpenAIEmbedding(model_name=embed_model_name, api_base=api_base, api_key=embed_api_key)
             storage_context = StorageContext.from_defaults(persist_dir=persist_dir)
             index = load_index_from_storage(storage_context)
 
