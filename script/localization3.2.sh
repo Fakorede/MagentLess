@@ -5,6 +5,5 @@ python agentless/fl/localize.py \
     --top_n 7 \
     --num_samples $NUM_SETS \
     --start_file results/$FOLDER_NAME/edit_location_samples/loc_outputs.jsonl \
-    --dataset data/verified_25_react_native_instances.jsonl \
     ${TARGET_ID:+--target_id $TARGET_ID}
 
