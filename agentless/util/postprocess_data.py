@@ -488,6 +488,8 @@ def extract_python_blocks(text):
 
 
 def extract_code_blocks(text):
+    if not text:
+        return []
     pattern = r"```\n(.*?)\n```"
     matches = re.findall(pattern, text, re.DOTALL)
     if len(matches) == 0:

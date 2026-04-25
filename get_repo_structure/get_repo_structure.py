@@ -37,6 +37,10 @@ repo_to_top_folder = {
     "expensify/app": "expensify",
     "metamask/metamask-mobile": "metamask-mobile",
     "rocketchat/rocket.chat.reactnative": "rocket.chat.reactnative",
+    "artsy/eigen": "eigen",
+    "mattermost/mattermost-mobile": "mattermost-mobile",
+    "nmf-earth/nmf-app": "nmf-app",
+    "pagopa/io-app": "io-app",
 }
 
 

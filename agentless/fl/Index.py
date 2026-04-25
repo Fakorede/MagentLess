@@ -341,22 +341,31 @@ class EmbeddingIndex(ABC):
                 embed_api_key = os.environ.get('OPENAI_EMBED_API_KEY')
                 embed_model = OpenAIEmbedding(model_name=embed_model_name, api_base=api_base, api_key=embed_api_key)
             index = VectorStoreIndex.from_documents(documents, embed_model=embed_model)
-            #index.storage_context.persist(persist_dir=persist_dir)
+            index.storage_context.persist(persist_dir=persist_dir)
         else:
             storage_context = StorageContext.from_defaults(persist_dir=persist_dir)
             index = load_index_from_storage(storage_context)
 
         self.logger.info(f"Retrieving with query:\n{self.problem_statement}")
 
-        # MOBILE_DEV:Truncate problem statement to fit within embedding model's context length
-        # text-embedding-3-large has max 8192 tokens, leave some margin
-        max_tokens = 6000
+        # MOBILE_DEV: Truncate problem statement to fit within embedding model's context length.
+        # text-embedding-3-large hard limit is 8192 tokens; use 8100 to leave a small
+        # safety margin. Truncate at the last sentence boundary so the query ends cleanly.
+        max_tokens = 8100
         encoding = tiktoken.encoding_for_model("text-embedding-3-large")
         tokens = encoding.encode(self.problem_statement)
         if len(tokens) > max_tokens:
-            truncated_tokens = tokens[:max_tokens]
-            truncated_text = encoding.decode(truncated_tokens)
-            self.logger.info(f"Truncated problem statement from {len(tokens)} to {max_tokens} tokens")
+            truncated_text = encoding.decode(tokens[:max_tokens])
+            # Walk back to the last sentence boundary to avoid cutting mid-sentence
+            for sep in ("\n\n", "\n", ". ", "! ", "? "):
+                idx = truncated_text.rfind(sep)
+                if idx > len(truncated_text) // 2:  # don't truncate more than half
+                    truncated_text = truncated_text[: idx + len(sep)].rstrip()
+                    break
+            self.logger.info(
+                f"Truncated problem statement from {len(tokens)} to "
+                f"{len(encoding.encode(truncated_text))} tokens"
+            )
             query_text = truncated_text
         else:
             query_text = self.problem_statement

@@ -486,7 +486,7 @@ def process_loc(loc, args, swe_bench_data, prev_o, write_lock=None):
         if args.mock:
             continue
 
-        raw_output = ret["response"]
+        raw_output = ret["response"] or ""
         logger.info(f"raw output:\n{raw_output}")
         all_generations.append(raw_output)
         edited_files, new_contents = _post_process_multifile_repair(

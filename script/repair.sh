@@ -5,8 +5,8 @@ for i in `seq 1 ${NUM_SETS}`; do
         --loc_file results/$FOLDER_NAME/edit_location_individual/loc_merged_${ii}-${ii}_outputs.jsonl \
         --output_folder results/$FOLDER_NAME/repair_sample_${i} \
         --loc_interval \
-        --top_n 3 \
-        --context_window 10 \
+        --top_n 7 \
+        --context_window 20 \
         --max_samples ${NUM_SAMPLES_PER_SET} \
         --cot \
         --diff_format \

@@ -279,7 +279,7 @@ Return just the locations wrapped with ```.
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
-        raw_output = traj["response"]
+        raw_output = traj["response"] or ""
 
         files, classes, functions = get_full_file_paths_and_classes_and_functions(
             self.structure
@@ -349,7 +349,7 @@ Return just the locations wrapped with ```.
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
-        raw_output = traj["response"]
+        raw_output = traj["response"] or ""
         model_found_files = self._parse_model_return_lines(raw_output)
 
         files, classes, functions = get_full_file_paths_and_classes_and_functions(
@@ -449,7 +449,7 @@ Return just the locations wrapped with ```.
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
-        raw_output = traj["response"]
+        raw_output = traj["response"] or ""
 
         model_found_locs = extract_code_blocks(raw_output)
         model_found_locs_separated = extract_locs_for_files(
@@ -533,7 +533,7 @@ Return just the locations wrapped with ```.
         )
         traj = model.codegen(message, num_samples=1)[0]
         traj["prompt"] = message
-        raw_output = traj["response"]
+        raw_output = traj["response"] or ""
 
         model_found_locs = extract_code_blocks(raw_output)
         model_found_locs_separated = extract_locs_for_files(

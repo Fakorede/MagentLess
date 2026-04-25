@@ -2,7 +2,7 @@ date "+%Y-%m-%d %H:%M:%S"
 python agentless/fl/localize.py \
     --fine_grain_line_level \
     --output_folder results/$FOLDER_NAME/edit_location_samples \
-    --top_n 3 \
+    --top_n 7 \
     --compress \
     --temperature 0.8 \
     --num_samples $NUM_SETS \

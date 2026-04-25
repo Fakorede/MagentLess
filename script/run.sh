@@ -10,10 +10,10 @@ source script/api_key.sh
 export PYTHONPATH=`pwd`
 export TARGET_ID=
 export NJ=1
-export NUM_SETS=5
-export NUM_SAMPLES_PER_SET=4
+export NUM_SETS=8
+export NUM_SAMPLES_PER_SET=3
 export NUM_REPRODUCTION=0
-export FOLDER_NAME=mobiledev_bench_kotlin-claude-sonnet-4.5
+export FOLDER_NAME=mobiledev_bench_rn_typescript-claude-sonnet-4.5
 export PROJECT_FILE_LOC=structure
 export DATASET=local_json
 export SPLIT=test
@@ -24,7 +24,7 @@ export SPLIT=test
 # Single languages: java, kotlin, typescript, dart
 # Multi-language configs: android, react_native, flutter
 # ============================================================================NUM_SAMPLES_PER_SET
-export SWEBENCH_LANG=kotlin
+export SWEBENCH_LANG=typescript
 
 # ============================================================================
 # LOCALIZATION PIPELINE
